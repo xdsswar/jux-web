@@ -1,0 +1,14 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+bootJar { enabled = false }
+jar { enabled = true }
+
+dependencies {
+    api project(':jux-core')
+    api project(':jux-server')
+    api project(':jux-a11y')
+    api project(':jux-i18n')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

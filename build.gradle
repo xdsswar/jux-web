@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.10' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'org.teavm' version '0.13.0' apply false
+}
+
+allprojects {
+    group = 'xss.it.jux'
+    version = '0.0.1-SNAPSHOT'
+    repositories { mavenCentral() }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+
+    java {
+        toolchain { languageVersion = JavaLanguageVersion.of(25) }
+    }
+
+    configurations {
+        compileOnly { extendsFrom annotationProcessor }
+    }
+
+    dependencies {
+        compileOnly 'org.projectlombok:lombok:1.18.42'
+        annotationProcessor 'org.projectlombok:lombok:1.18.42'
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+        testImplementation 'org.assertj:assertj-core:3.27.3'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+        jvmArgs '-XX:+EnableDynamicAgentLoading', '-Xshare:off'
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+        }
+    }
+}

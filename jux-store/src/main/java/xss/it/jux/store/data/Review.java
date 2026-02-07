@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2026 Xtreme Software Solutions (XDSSWAR). All rights reserved.
+ *
+ * Licensed under the Xtreme Software Solutions Source License v1.0 (the "License").
+ * You may not use this file except in compliance with the License.
+ *
+ * - Open-source use: Free (see License for conditions)
+ * - Commercial use: Requires explicit written permission from Xtreme Software Solutions
+ *
+ * This software is provided "AS IS", without warranty of any kind.
+ * See the LICENSE file in the project root for full terms.
+ */
+
+package xss.it.jux.store.data;
+
+/**
+ * A customer review for a product.
+ *
+ * @param author   the reviewer's display name
+ * @param rating   star rating from 1 to 5
+ * @param text     the review body text
+ * @param date     display date string (e.g. "Jan 15, 2026")
+ * @param verified whether this is a verified purchase review
+ */
+public record Review(
+        String author,
+        int rating,
+        String text,
+        String date,
+        boolean verified
+) {}

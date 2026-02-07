@@ -1,0 +1,59 @@
+XTREME SOFTWARE SOLUTIONS Source License v1.0
+
+Copyright (c) 2026 Xtreme Software Solutions (XDSSWAR). All rights reserved.
+
+
+1. OPEN-SOURCE USE
+
+   Permission is hereby granted, free of charge, to any person or organization
+   obtaining a copy of this software and associated documentation files (the
+   "Software"), to use, copy, modify, merge, publish, and distribute the
+   Software for open-source, non-commercial purposes, provided that:
+
+   (a) The above copyright notice and this permission notice shall be included
+       in all copies or substantial portions of the Software.
+
+   (b) The project using this Software is itself distributed under an
+       OSI-approved open-source license or an equivalent permissive or
+       copyleft license.
+
+
+2. COMMERCIAL / PAID USE
+
+   Any use of the Software in commercial, proprietary, closed-source, or
+   revenue-generating projects — including but not limited to SaaS products,
+   paid applications, consulting deliverables, and internal enterprise tools —
+   requires explicit prior written permission from Xtreme Software Solutions.
+
+   To obtain a commercial license, contact Xtreme Software Solutions directly.
+
+
+3. CONCEPT STATUS
+
+   This Software is a concept framework under active development. Its APIs,
+   behavior, module structure, and configuration surface may change at any
+   time without notice. There is no guarantee of backwards compatibility
+   between versions.
+
+
+4. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+   YOU USE THIS SOFTWARE ENTIRELY AT YOUR OWN RISK. THE AUTHOR IS NOT
+   RESPONSIBLE FOR ANY ISSUES, DATA LOSS, DOWNTIME, SECURITY VULNERABILITIES,
+   OR ANY OTHER CONSEQUENCES ARISING FROM THE USE OF THIS SOFTWARE.
+
+
+5. CONTRIBUTIONS
+
+   By submitting a contribution (pull request, patch, or other code) to this
+   project, you agree to license your contribution under the same terms as
+   this license and assign copyright to Xtreme Software Solutions.

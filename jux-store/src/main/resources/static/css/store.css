@@ -1,0 +1,219 @@
+/*
+ * JUX Store — Custom Styles
+ *
+ * Supplements Tailwind CSS with JUX-specific utilities:
+ * - Skip-nav link (WCAG 2.4.1 — Bypass Blocks)
+ * - Screen-reader-only text (WCAG 1.3.1)
+ * - Breadcrumb separators (CSS-only, not in DOM)
+ * - Focus ring override for Tailwind
+ * - Custom animations
+ */
+
+/* ── Skip Navigation (WCAG 2.4.1) ─────────────────────────────────
+ * Visually hidden until focused. Allows keyboard users to jump
+ * past the header/nav directly to main content.
+ */
+.jux-skip-nav {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+    padding: 0.75rem 1.5rem;
+    background: #4f46e5;
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 0.5rem 0;
+}
+
+.jux-skip-nav:focus {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+/* ── Screen Reader Only (WCAG 1.3.1) ──────────────────────────────
+ * Visually hidden but announced by assistive technology.
+ */
+.jux-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Breadcrumb Separators ─────────────────────────────────────────
+ * Injected via CSS pseudo-elements so screen readers don't
+ * announce the separator character.
+ */
+.jux-breadcrumb-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.jux-breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.jux-breadcrumb-item + .jux-breadcrumb-item::before {
+    content: "/";
+    margin-right: 0.25rem;
+    color: #9ca3af;
+}
+
+.jux-breadcrumb-item a {
+    text-decoration: none;
+    color: #6366f1;
+}
+
+.jux-breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+
+.jux-breadcrumb-item span[aria-current="page"] {
+    color: #6b7280;
+}
+
+/* ── Focus Visible ─────────────────────────────────────────────────
+ * Ensures visible focus indicators (WCAG 2.4.7).
+ */
+*:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+/* ── Live Region ───────────────────────────────────────────────────
+ * Container for dynamic content announced by screen readers.
+ */
+.jux-live-region {
+    position: relative;
+}
+
+/* ── Star Rating ───────────────────────────────────────────────────
+ * SVG star display for product ratings.
+ */
+.star-filled {
+    color: #f59e0b;
+}
+
+.star-empty {
+    color: #d1d5db;
+}
+
+/* ── Pagination (Tailwind-styled) ──────────────────────────────────
+ * Override JuxPagination's Bootstrap classes with Tailwind equivalents.
+ */
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.page-item .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    text-decoration: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    color: #374151;
+    background-color: #ffffff;
+    transition: all 150ms;
+}
+
+.page-item .page-link:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.page-item.active .page-link {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+    color: #ffffff;
+}
+
+.page-item.disabled .page-link {
+    color: #9ca3af;
+    pointer-events: none;
+    background-color: #f9fafb;
+}
+
+/* ── Tabs (Tailwind-styled) ────────────────────────────────────────
+ * Override JuxTabs' Bootstrap nav-tabs classes.
+ */
+.nav-tabs {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+    gap: 0;
+}
+
+.nav-tabs .nav-item {
+    list-style: none;
+}
+
+.nav-tabs .nav-link {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #4f46e5;
+    border-bottom-color: #c7d2fe;
+}
+
+.nav-tabs .nav-link.active {
+    color: #4f46e5;
+    border-bottom-color: #4f46e5;
+}
+
+.tab-content .tab-pane {
+    display: none;
+}
+
+.tab-content .tab-pane.show.active {
+    display: block;
+}
+
+/* ── Smooth Scroll ─────────────────────────────────────────────────
+ * Respects prefers-reduced-motion for WCAG 2.3.3.
+ */
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+}

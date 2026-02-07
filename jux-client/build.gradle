@@ -1,0 +1,23 @@
+plugins {
+    /* Version resolved from pluginManagement in settings.gradle. */
+    id 'org.teavm'
+}
+
+dependencies {
+    implementation project(':jux-core')
+    implementation project(':jux-annotations')
+    implementation project(':jux-a11y')
+    implementation "org.teavm:teavm-classlib:${teavmVersion}"
+    implementation "org.teavm:teavm-jso:${teavmVersion}"
+    implementation "org.teavm:teavm-jso-apis:${teavmVersion}"
+}
+
+teavm {
+    js {
+        mainClass = 'xss.it.jux.client.ClientMain'
+        targetFileName = 'jux-client.js'
+        optimization = org.teavm.gradle.api.OptimizationLevel.AGGRESSIVE
+        obfuscated = true
+        sourceMap = false
+    }
+}

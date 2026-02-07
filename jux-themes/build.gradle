@@ -1,0 +1,4 @@
+dependencies {
+    api project(':jux-core')
+    api project(':jux-a11y')
+}

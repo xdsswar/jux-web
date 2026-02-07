@@ -1,0 +1,240 @@
+/* JUX Demo - minimal custom styles on top of Bootstrap 5 */
+
+/* Skip navigation link - visible only on keyboard focus */
+.jux-skip-nav {
+    position: absolute;
+    top: -100%;
+    left: 1rem;
+    z-index: 9999;
+    padding: 0.5rem 1rem;
+    background: #0d6efd;
+    color: #fff;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    font-weight: 600;
+    transition: top 0.2s;
+}
+.jux-skip-nav:focus {
+    top: 0.5rem;
+    color: #fff;
+}
+
+/* Screen reader only text */
+.jux-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Live region styling */
+.jux-live-region {
+    padding: 0.75rem 1rem;
+    border-left: 4px solid #0d6efd;
+    background: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+/* Bootstrap tab content panel border */
+.tab-content {
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* Breadcrumb */
+.jux-breadcrumb ol {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 0;
+    gap: 0;
+}
+.jux-breadcrumb li {
+    display: flex;
+    align-items: center;
+}
+.jux-breadcrumb li + li::before {
+    content: "/";
+    padding: 0 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+.jux-breadcrumb a {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+}
+.jux-breadcrumb a:hover {
+    color: #fff;
+}
+.jux-breadcrumb [aria-current="page"] {
+    color: #fff;
+}
+
+/* Toast notifications */
+.jux-toast {
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    border-left: 4px solid;
+    margin-bottom: 0;
+}
+.jux-toast-success {
+    background: #d1e7dd;
+    border-color: #198754;
+    color: #0f5132;
+}
+.jux-toast-info {
+    background: #cff4fc;
+    border-color: #0dcaf0;
+    color: #055160;
+}
+.jux-toast-warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+    color: #664d03;
+}
+.jux-toast-error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #842029;
+}
+
+/* Progress bar */
+.jux-progress {
+    margin-bottom: 0;
+}
+.jux-progress-track {
+    height: 1.25rem;
+    background: #e9ecef;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+.jux-progress-bar {
+    height: 100%;
+    background: #0d6efd;
+    border-radius: 0.375rem;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Text field - Bootstrap-compatible styles for JuxTextField */
+.jux-textfield {
+    margin-bottom: 0;
+}
+.jux-textfield-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #212529;
+}
+.jux-textfield-input {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    appearance: none;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.jux-textfield-input::placeholder {
+    color: #6c757d;
+    opacity: 1;
+}
+.jux-textfield-input:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+.jux-textfield-input[aria-invalid="true"] {
+    border-color: #dc3545;
+}
+.jux-textfield-input[aria-invalid="true"]:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+.jux-textfield-help {
+    display: block;
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+.jux-textfield-error-message {
+    display: block;
+    font-size: 0.875rem;
+    color: #dc3545;
+    margin-top: 0.25rem;
+}
+
+/* Code blocks */
+pre code {
+    font-family: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
+}
+
+/* Smooth scrolling for anchor links */
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 1rem;
+}
+
+
+/* ── Dashboard stat cards ───────────────────────────── */
+.stat-card {
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+/* ── Pricing cards ──────────────────────────────────── */
+.pricing-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pricing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ── Gallery ────────────────────────────────────────── */
+.gallery-card img {
+    transition: transform 0.3s;
+}
+
+.gallery-card:hover img {
+    transform: scale(1.05);
+}
+
+.gallery-card {
+    overflow: hidden;
+}
+
+/* ── Login ──────────────────────────────────────────── */
+.login-card {
+    border: none;
+    border-radius: 1rem;
+}
+
+/* ── Search ─────────────────────────────────────────── */
+.search-result:hover {
+    background: #f8f9fa;
+}

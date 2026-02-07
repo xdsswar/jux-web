@@ -1,0 +1,25 @@
+server:
+  port: 9091
+
+jux:
+  base-package: xss.it.jux.store.pages
+  ssr:
+    cache:
+      enabled: false
+  a11y:
+    enabled: true
+    audit-on-render: true
+    fail-on-error: false
+    log-violations: true
+    default-lang: en
+  i18n:
+    enabled: true
+    default-locale: en
+    locales:
+      - en
+      - es
+    base-name: lang
+
+spring:
+  main:
+    banner-mode: off

@@ -1,0 +1,11 @@
+pluginManagement {
+    plugins {
+        /* TeaVM Gradle plugin — compiles Java → JavaScript for client-side hydration. */
+        id 'org.teavm' version '0.13.0'
+    }
+}
+
+rootProject.name = 'jux-web'
+
+include ':jux-annotations', ':jux-core', ':jux-a11y', ':jux-i18n', ':jux-processor',
+        ':jux-client', ':jux-server', ':jux-themes', ':jux-cms', ':jux-demo', ':jux-store'

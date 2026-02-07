@@ -1,0 +1,4 @@
+dependencies {
+    implementation project(':jux-annotations')
+    implementation project(':jux-core')
+}
