@@ -6,6 +6,7 @@ dependencies {
     implementation project(':jux-server')
     implementation project(':jux-themes')
     implementation project(':jux-reactive')
+    implementation project(':jux-animations')
     implementation project(':jux-html')
     implementation project(':jux-client')
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -40,6 +41,10 @@ tasks.named('bootRun') {
 
 tasks.named('bootJar') {
     dependsOn 'copyClientJs'
+}
+
+tasks.named('jar') {
+    mustRunAfter 'copyClientJs'
 }
 
 tasks.named('resolveMainClassName') {

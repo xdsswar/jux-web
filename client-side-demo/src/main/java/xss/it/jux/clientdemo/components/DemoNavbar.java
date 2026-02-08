@@ -180,6 +180,7 @@ public class DemoNavbar extends Component {
                         navLink("/components", messages.getString("nav.components")),
                         navLink("/api-demo", messages.getString("nav.api")),
                         navLink("/html-demo", messages.getString("nav.html")),
+                        navLink("/animations", messages.getString("nav.animations")),
                         navLink("/about", messages.getString("nav.about"))
                 );
     }

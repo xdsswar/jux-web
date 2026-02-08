@@ -22,6 +22,11 @@ import xss.it.jux.clientdemo.components.TabsWidget;
 import xss.it.jux.clientdemo.components.ThemeToggleWidget;
 import xss.it.jux.clientdemo.components.TodoWidget;
 import xss.it.jux.clientdemo.components.UserBrowserWidget;
+import xss.it.jux.clientdemo.components.EasingShowcaseWidget;
+import xss.it.jux.clientdemo.components.FadeDemoWidget;
+import xss.it.jux.clientdemo.components.SequenceDemoWidget;
+import xss.it.jux.clientdemo.components.TimelineDemoWidget;
+import xss.it.jux.clientdemo.components.TransformDemoWidget;
 
 /**
  * TeaVM entry point for the client-side demo application.
@@ -81,6 +86,18 @@ public final class DemoClientMain {
                 "xss.it.jux.clientdemo.components.PollWidget", PollWidget::new);
         ClientMain.registerComponent(
                 "xss.it.jux.clientdemo.components.ChartWidget", ChartWidget::new);
+
+        /* ── Animations Demo Page ──────────────────────────────────── */
+        ClientMain.registerComponent(
+                "xss.it.jux.clientdemo.components.FadeDemoWidget", FadeDemoWidget::new);
+        ClientMain.registerComponent(
+                "xss.it.jux.clientdemo.components.EasingShowcaseWidget", EasingShowcaseWidget::new);
+        ClientMain.registerComponent(
+                "xss.it.jux.clientdemo.components.TransformDemoWidget", TransformDemoWidget::new);
+        ClientMain.registerComponent(
+                "xss.it.jux.clientdemo.components.TimelineDemoWidget", TimelineDemoWidget::new);
+        ClientMain.registerComponent(
+                "xss.it.jux.clientdemo.components.SequenceDemoWidget", SequenceDemoWidget::new);
 
         /* Start the JUX client runtime: discover and hydrate components. */
         ClientMain.main();
