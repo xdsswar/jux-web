@@ -64,6 +64,28 @@ That's a complete page. Spring Boot auto-configuration picks up `@Route`, regist
 | **Spring Boot native** | Auto-configuration, DI, JPA, Security — all the Spring ecosystem, zero friction |
 | **CMS module** | Database-driven pages, widget registry, drag-and-drop admin panel |
 
+### Screenshots
+
+**JUX Demo** — Bootstrap 5, light/dark themes, i18n
+
+![JUX Demo — Home](images/img_2.png)
+
+![JUX Demo — Gallery](images/img_3.png)
+
+**JUX Store** — Tailwind CSS, e-commerce storefront
+
+![JUX Store — Home](images/img_4.png)
+
+![JUX Store — Products](images/img_5.png)
+
+![JUX Store — Product Detail](images/img_6.png)
+
+**Client-Side Demo** — TeaVM interactive components & animations
+
+![Client-Side Demo — Interactive Components](images/img.png)
+
+![Client-Side Demo — Animation API](images/img_1.png)
+
 ---
 
 ## Quick Start
@@ -140,7 +162,7 @@ jux:
 ./gradlew bootRun
 ```
 
-Open `http://localhost:8080`. Done.
+Open `http://localhost:909X`. Done. (Check each demo application.yml file for the port)
 
 ---
 
