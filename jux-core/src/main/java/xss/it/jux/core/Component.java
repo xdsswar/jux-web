@@ -68,9 +68,47 @@ public abstract class Component {
      * {@code div()}, {@code h1()}, {@code section()}, etc.</p>
      *
      * <p>This method should be <b>pure</b> -- given the same props and state,
-     * it should produce the same tree. Side effects belong in {@code @OnMount}.</p>
+     * it should produce the same tree. Side effects belong in {@link #onMount()}.</p>
      *
      * @return the root Element of this component's rendered output, never null
      */
     public abstract Element render();
+
+    /**
+     * Client-side lifecycle hook invoked after this component is hydrated.
+     *
+     * <p>Override this method to perform initialization that requires browser APIs:
+     * setting up timers, opening WebSocket connections, drawing on canvas, fetching
+     * data from REST endpoints, etc.</p>
+     *
+     * <p>This method is called once by the JUX client runtime after the component's
+     * server-rendered HTML has been hydrated with event listeners and reactive state.
+     * It is <b>not</b> called during server-side rendering.</p>
+     *
+     * <p>The default implementation does nothing.</p>
+     *
+     * @see #onUnmount()
+     */
+    public void onMount() {
+        // No-op by default. Override to perform post-hydration initialization.
+    }
+
+    /**
+     * Client-side lifecycle hook invoked before this component is removed from the DOM.
+     *
+     * <p>Override this method to perform cleanup: cancelling timers, closing
+     * WebSocket connections, aborting in-flight HTTP requests, removing global
+     * event listeners, etc.</p>
+     *
+     * <p>This method is called by the JUX client runtime when a component is
+     * destroyed (e.g. during navigation or parent re-render). It is <b>not</b>
+     * called during server-side rendering.</p>
+     *
+     * <p>The default implementation does nothing.</p>
+     *
+     * @see #onMount()
+     */
+    public void onUnmount() {
+        // No-op by default. Override to perform pre-removal cleanup.
+    }
 }

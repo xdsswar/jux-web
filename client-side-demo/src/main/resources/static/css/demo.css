@@ -1,0 +1,259 @@
+/*
+ * Client-Side Demo — Custom Styles
+ *
+ * Supplements Tailwind CSS with JUX-specific utilities and
+ * custom animations for the interactive component demos.
+ */
+
+/* ── Skip Navigation (WCAG 2.4.1) ─────────────────────────────────
+ * Visually hidden until focused. Allows keyboard users to jump
+ * past the header/nav directly to main content.
+ */
+.jux-skip-nav {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    z-index: 9999;
+    padding: 0.75rem 1.5rem;
+    background: #7c3aed;
+    color: #ffffff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 0.5rem 0;
+}
+
+.jux-skip-nav:focus {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
+}
+
+/* ── Screen Reader Only (WCAG 1.3.1) ──────────────────────────────
+ * Visually hidden but announced by assistive technology.
+ */
+.jux-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Focus Visible ────────────────────────────────────────────────
+ * Ensures visible focus indicators (WCAG 2.4.7).
+ */
+*:focus-visible {
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
+}
+
+/* ── Live Region ──────────────────────────────────────────────────
+ * Container for dynamic content announced by screen readers.
+ */
+.jux-live-region {
+    position: relative;
+}
+
+/* ── Glass Card Effect ────────────────────────────────────────────
+ * Modern glassmorphism effect for card components.
+ */
+.glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ── Gradient Text ────────────────────────────────────────────────
+ * Gradient text effect for headings.
+ */
+.gradient-text {
+    background: linear-gradient(135deg, #7c3aed, #2563eb, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Animations ───────────────────────────────────────────────────
+ * Custom animations for interactive components.
+ * All respect prefers-reduced-motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.5s ease-out;
+    }
+
+    .animate-scale-in {
+        animation: scaleIn 0.3s ease-out;
+    }
+
+    .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(1rem); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ── Code Block ───────────────────────────────────────────────────
+ * Styled code blocks for showing component usage.
+ */
+.code-block {
+    background: #1e1b4b;
+    color: #c4b5fd;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+    border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.code-block .keyword {
+    color: #c084fc;
+}
+
+.code-block .string {
+    color: #34d399;
+}
+
+.code-block .comment {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.code-block .annotation {
+    color: #fbbf24;
+}
+
+/* ── Toast Notification ───────────────────────────────────────────
+ * Slide-in notification styling.
+ */
+.toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.toast-item {
+    pointer-events: auto;
+    min-width: 20rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    font-weight: 500;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(2rem); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Modal Backdrop ───────────────────────────────────────────────
+ */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    max-width: 32rem;
+    width: 90%;
+    animation: scaleIn 0.2s ease-out;
+}
+
+/* ── Interactive Counter ──────────────────────────────────────────
+ */
+.counter-display {
+    font-variant-numeric: tabular-nums;
+    transition: transform 0.15s ease-out;
+}
+
+.counter-display:active {
+    transform: scale(1.05);
+}
+
+/* ── Progress Ring ────────────────────────────────────────────────
+ */
+.progress-ring {
+    transition: stroke-dashoffset 0.5s ease-out;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────
+ */
+.tab-indicator {
+    transition: left 0.3s ease-out, width 0.3s ease-out;
+}
+
+/* ── Accordion ────────────────────────────────────────────────────
+ */
+.accordion-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.accordion-chevron {
+    transition: transform 0.3s ease-out;
+}
+
+.accordion-chevron.open {
+    transform: rotate(180deg);
+}

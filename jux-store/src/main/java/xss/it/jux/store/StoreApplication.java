@@ -38,8 +38,7 @@ import xss.it.jux.server.WebApplication;
 @Css(value = "/css/store.css", order = 10)
 @Favicon(value = "/img/store-logo.png", type = "image/png")
 public class StoreApplication implements WebApplication {
-
-    public static void main(String... args) {
+    static void main(String... args) {
         SpringApplication.run(StoreApplication.class, args);
     }
 }

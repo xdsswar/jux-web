@@ -19,7 +19,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import xss.it.jux.annotation.JuxComponent;
 
 /**
  * Virtual DOM node -- the core building block of JUX's rendering model.
@@ -58,6 +61,12 @@ import java.util.stream.Collectors;
 public class Element {
 
     // ── Internal state ───────────────────────────────────────────
+
+    /**
+     * Global counter for generating unique {@code data-jux-id} values
+     * for client-side component instances during SSR.
+     */
+    private static final AtomicInteger JUX_ID_COUNTER = new AtomicInteger(0);
 
     /** The HTML tag name for this element (e.g. "div", "section", "h1"). Never null. */
     private final String tag;
@@ -291,6 +300,12 @@ public class Element {
      * <p>The component's {@link Component#render()} is called immediately
      * and its output Element tree is inserted as a child of this element.</p>
      *
+     * <p>If the component class is annotated with
+     * {@code @JuxComponent(clientSide = true)}, the root element of the
+     * rendered tree is automatically tagged with {@code data-jux-id} and
+     * {@code data-jux-class} attributes. These markers enable the TeaVM
+     * client runtime to discover and hydrate the component after SSR.</p>
+     *
      * @param component the child component to render inline
      * @return this element for chaining
      * @throws NullPointerException if component is null
@@ -299,6 +314,15 @@ public class Element {
         Objects.requireNonNull(component, "component must not be null");
         Element rendered = component.render();
         if (rendered != null) {
+            JuxComponent annotation = component.getClass().getAnnotation(JuxComponent.class);
+            if (annotation != null && annotation.clientSide()) {
+                String className = component.getClass().getName();
+                String simpleName = component.getClass().getSimpleName();
+                String instanceId = simpleName.toLowerCase() + "-"
+                        + JUX_ID_COUNTER.incrementAndGet();
+                rendered.attr("data-jux-id", instanceId);
+                rendered.attr("data-jux-class", className);
+            }
             this.children.add(rendered);
         }
         return this;

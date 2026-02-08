@@ -1,0 +1,47 @@
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'org.teavm'
+
+dependencies {
+    implementation project(':jux-server')
+    implementation project(':jux-themes')
+    implementation project(':jux-reactive')
+    implementation project(':jux-html')
+    implementation project(':jux-client')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    implementation "org.teavm:teavm-classlib:${teavmVersion}"
+    implementation "org.teavm:teavm-jso:${teavmVersion}"
+    implementation "org.teavm:teavm-jso-apis:${teavmVersion}"
+}
+
+teavm {
+    js {
+        mainClass = 'xss.it.jux.clientdemo.client.DemoClientMain'
+        targetFileName = 'jux-client.js'
+        optimization = org.teavm.gradle.api.OptimizationLevel.AGGRESSIVE
+        obfuscated = false
+        sourceMap = true
+    }
+}
+
+/* Copy TeaVM-generated JS into the processed resources output directory,
+   avoiding a circular dependency with processResources. */
+tasks.register('copyClientJs', Copy) {
+    dependsOn tasks.named('generateJavaScript')
+    from layout.buildDirectory.dir("generated/teavm/js")
+    into layout.buildDirectory.dir("resources/main/static/js")
+    include '*.js'
+}
+
+tasks.named('bootRun') {
+    dependsOn 'copyClientJs'
+}
+
+tasks.named('bootJar') {
+    dependsOn 'copyClientJs'
+}
+
+tasks.named('resolveMainClassName') {
+    dependsOn 'copyClientJs'
+}

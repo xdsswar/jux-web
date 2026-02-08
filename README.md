@@ -6,7 +6,7 @@
 ### Build entire websites in pure Java.
 ### No HTML templates. No JavaScript files. No CSS authoring. Just Java.
 
-**SSR** · **WCAG 2.2 AA** · **i18n** · **Themes** · **CMS** · **Spring Boot**
+**SSR** · **WCAG 2.2 AA** · **i18n** · **Themes** · **CMS** · **Reactive** · **Animations** · **Spring Boot**
 
 [Why JUX?](#why-jux) · [Quick Start](#quick-start) · [Architecture](#architecture) · [Modules](#modules) · [Examples](#examples) · [Configuration](#configuration) · [License](#license)
 
@@ -57,6 +57,9 @@ That's a complete page. Spring Boot auto-configuration picks up `@Route`, regist
 | **WCAG 2.2 AA by default** | No `img()` without alt text. Audit engine catches violations at render time. ADA compliance built in. |
 | **Type-safe i18n** | Translations are Java interfaces, not `.properties` files. Compile-time safety. |
 | **Cookie-based themes** | Light/dark switching without page reload — `data-theme` attribute + CSS selectors |
+| **Reactive properties** | Optional — observable values, bindings, computed expressions, observable collections |
+| **Animations** | Optional — keyframe timelines, transitions (fade, scale, slide, rotate), easing functions |
+| **HTML templates** | Optional — load HTML files into components via `@Html`, `@HtmlId`, `@Slot` annotations |
 | **Route engine** | `@Route("/blog/{slug}")` with typed path params, query params, security roles, caching |
 | **Spring Boot native** | Auto-configuration, DI, JPA, Security — all the Spring ecosystem, zero friction |
 | **CMS module** | Database-driven pages, widget registry, drag-and-drop admin panel |
@@ -76,9 +79,12 @@ plugins {
 }
 
 dependencies {
-    implementation 'xss.it.jux:jux-server:0.0.1-SNAPSHOT'
-    implementation 'xss.it.jux:jux-themes:0.0.1-SNAPSHOT'    // optional: theme components
-    implementation 'xss.it.jux:jux-cms:0.0.1-SNAPSHOT'        // optional: CMS module
+    implementation 'xss.it.jux:jux-server:1.0.0'
+    implementation 'xss.it.jux:jux-themes:1.0.0'      // optional: theme components
+    implementation 'xss.it.jux:jux-cms:1.0.0'          // optional: CMS module
+    implementation 'xss.it.jux:jux-reactive:1.0.0'     // optional: reactive properties & collections
+    implementation 'xss.it.jux:jux-animations:1.0.0'   // optional: keyframe animations & transitions
+    implementation 'xss.it.jux:jux-html:1.0.0'         // optional: HTML template loading
 }
 ```
 
@@ -141,43 +147,55 @@ Open `http://localhost:8080`. Done.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Consumer Project                         │
-│  @Route pages · @JuxComponent widgets · @MessageBundle i18n     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │  jux-server  │  │  jux-themes │  │       jux-cms           │ │
-│  │  SSR engine  │  │  Components │  │  Page builder, widgets  │ │
-│  │  Route engine│  │  Design     │  │  Admin panel            │ │
-│  │  Spring auto │  │  tokens     │  │  Widget registry        │ │
-│  └──────┬───┬──┘  └──────┬──────┘  └──────────┬──────────────┘ │
-│         │   │            │                     │                │
-│  ┌──────┴───┴────────────┴─────────────────────┘                │
-│  │                                                              │
-│  │  ┌───────────┐  ┌───────────┐  ┌─────────────┐              │
-│  │  │  jux-core │  │  jux-a11y │  │   jux-i18n  │              │
-│  │  │  Element  │  │  WCAG 2.2 │  │  Messages   │              │
-│  │  │  PageMeta │  │  Audit    │  │  Locale     │              │
-│  │  │  Page     │  │  AutoFix  │  │  RTL        │              │
-│  │  └─────┬─────┘  └───────────┘  └─────────────┘              │
-│  │        │                                                     │
-│  │  ┌─────┴──────────────┐  ┌─────────────┐                    │
-│  │  │  jux-annotations   │  │ jux-processor│                    │
-│  │  │  @Route @Css @Title│  │ Compile-time │                    │
-│  │  │  @Meta @Js @Layout │  │ validation   │                    │
-│  │  └────────────────────┘  └──────────────┘                    │
-│  │                                                              │
-│  │  ┌─────────────┐                                             │
-│  │  │ jux-client  │  TeaVM: Java → JavaScript                   │
-│  │  │ DOM bridge  │  Hydration, state, events                   │
-│  │  │ Event bind  │  org.teavm.jso.dom.html.*                   │
-│  │  └─────────────┘                                             │
-│  │                                                              │
-├──┴──────────────────────────────────────────────────────────────┤
-│                     Spring Boot 3.5.10                          │
-│              Web MVC · JPA · Security · DI · Cache              │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Consumer Project                             │
+│  @Route pages · @JuxComponent widgets · @MessageBundle i18n          │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────────────┐ │
+│  │  jux-server  │  │  jux-themes │  │          jux-cms             │ │
+│  │  SSR engine  │  │  Components │  │  Page builder, widgets       │ │
+│  │  Route engine│  │  Design     │  │  Admin panel                 │ │
+│  │  Spring auto │  │  tokens     │  │  Widget registry             │ │
+│  └──────┬───┬──┘  └──────┬──────┘  └───────────┬──────────────────┘ │
+│         │   │            │                      │                    │
+│  ┌──────┴───┴────────────┴──────────────────────┘                    │
+│  │                                                                   │
+│  │  ┌───────────┐  ┌───────────┐  ┌─────────────┐                   │
+│  │  │  jux-core │  │  jux-a11y │  │   jux-i18n  │                   │
+│  │  │  Element  │  │  WCAG 2.2 │  │  Messages   │                   │
+│  │  │  PageMeta │  │  Audit    │  │  Locale     │                   │
+│  │  │  Page     │  │  AutoFix  │  │  RTL        │                   │
+│  │  └─────┬─────┘  └───────────┘  └─────────────┘                   │
+│  │        │                                                          │
+│  │  ┌─────┴──────────────┐  ┌──────────────┐                        │
+│  │  │  jux-annotations   │  │ jux-processor │                        │
+│  │  │  @Route @Css @Title│  │ Compile-time  │                        │
+│  │  │  @Meta @Js @Layout │  │ validation    │                        │
+│  │  └────────────────────┘  └──────────────-┘                        │
+│  │                                                                   │
+│  │  ┌─────────────┐                                                  │
+│  │  │ jux-client  │  TeaVM: Java → JavaScript                        │
+│  │  │ DOM bridge  │  Hydration, state, events                        │
+│  │  │ Event bind  │  org.teavm.jso.dom.html.*                        │
+│  │  └─────────────┘                                                  │
+│  │                                                                   │
+│  │  ┌────────────────────────────────────────────────────────────┐   │
+│  │  │                  OPTIONAL MODULES                          │   │
+│  │  │                                                            │   │
+│  │  │  ┌──────────────┐  ┌────────────────┐  ┌──────────────┐   │   │
+│  │  │  │ jux-reactive │  │ jux-animations │  │   jux-html   │   │   │
+│  │  │  │ Properties   │  │ Timeline       │  │ @Html parse  │   │   │
+│  │  │  │ Bindings     │  │ Keyframes      │  │ @HtmlId      │   │   │
+│  │  │  │ Collections  │  │ Transitions    │  │ @Slot inject │   │   │
+│  │  │  │ Expressions  │  │ Interpolators  │  │ #{} i18n     │   │   │
+│  │  │  └──────────────┘  └────────────────┘  └──────────────┘   │   │
+│  │  └────────────────────────────────────────────────────────────┘   │
+│  │                                                                   │
+├──┴───────────────────────────────────────────────────────────────────┤
+│                        Spring Boot 3.5.10                            │
+│                 Web MVC · JPA · Security · DI · Cache                │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Request Lifecycle
@@ -778,6 +796,177 @@ public class MyWidgets {
 
 ---
 
+### `jux-reactive` — Observable properties & collections *(optional)*
+
+A reactive data layer for JUX. **Not required** — JUX works without it. Add it when you need observable state, data binding, or computed values.
+
+```groovy
+implementation 'xss.it.jux:jux-reactive:1.0.0'
+```
+
+**Properties** — type-safe, change-tracking wrappers:
+
+```java
+var name = new SimpleStringProperty("Alice");
+var age = new SimpleIntegerProperty(30);
+
+// Listen for changes
+name.addListener((obs, oldVal, newVal) ->
+    System.out.println("Name changed: " + oldVal + " → " + newVal));
+
+name.set("Bob");  // triggers listener
+```
+
+**Bindings** — computed values that auto-update:
+
+```java
+var firstName = new SimpleStringProperty("Jane");
+var lastName = new SimpleStringProperty("Doe");
+
+// Computed binding — updates automatically when either property changes
+StringBinding fullName = Bindings.concat(firstName, " ", lastName);
+fullName.get();  // "Jane Doe"
+
+firstName.set("John");
+fullName.get();  // "John Doe"
+```
+
+**Observable collections** — lists, sets, maps with change tracking:
+
+```java
+ObservableList<String> items = JuxCollections.observableArrayList();
+
+items.addListener((ListChangeListener<String>) change -> {
+    while (change.next()) {
+        if (change.wasAdded()) System.out.println("Added: " + change.getAddedSubList());
+        if (change.wasRemoved()) System.out.println("Removed: " + change.getRemoved());
+    }
+});
+
+items.addAll("Alpha", "Beta", "Gamma");
+
+// Filtered and sorted views — live, no copying
+FilteredList<String> filtered = new FilteredList<>(items, s -> s.startsWith("A"));
+SortedList<String> sorted = new SortedList<>(items, Comparator.reverseOrder());
+```
+
+**What's included:**
+- `SimpleObjectProperty<T>`, `SimpleStringProperty`, `SimpleIntegerProperty`, `SimpleLongProperty`, `SimpleDoubleProperty`, `SimpleBooleanProperty`
+- `ReadOnlyObjectProperty<T>` and typed read-only variants
+- `ObjectBinding<T>`, `StringBinding`, `IntegerBinding`, `LongBinding`, `DoubleBinding`, `BooleanBinding`
+- `Bindings` utility — `add`, `subtract`, `multiply`, `divide`, `concat`, `equal`, `greaterThan`, `when/then/otherwise`, and more
+- `ObservableList<E>`, `ObservableSet<E>`, `ObservableMap<K,V>` with `FilteredList`, `SortedList`
+- Bidirectional binding, lazy evaluation, invalidation listeners
+
+---
+
+### `jux-animations` — Keyframe animations & transitions *(optional)*
+
+Timeline-based animation engine for JUX. **Not required** — add it when you need property animations, transitions, or sequenced effects.
+
+Depends on `jux-reactive` (animates reactive properties).
+
+```groovy
+implementation 'xss.it.jux:jux-animations:1.0.0'
+```
+
+**Timeline** — keyframe-based animation:
+
+```java
+var opacity = new SimpleDoubleProperty(0.0);
+
+Timeline timeline = new Timeline(
+    new KeyFrame(Duration.ZERO,
+        new KeyValue<>(opacity, 0.0)),
+    new KeyFrame(Duration.seconds(1),
+        new KeyValue<>(opacity, 1.0, Interpolator.EASE_IN_OUT))
+);
+
+timeline.play();  // opacity animates 0 → 1 over 1 second
+```
+
+**Built-in transitions:**
+
+```java
+// Fade in/out
+new FadeTransition(Duration.millis(500), opacityProp)
+    .setFromValue(0.0).setToValue(1.0).play();
+
+// Scale
+new ScaleTransition(Duration.seconds(0.3), scaleProp)
+    .setFromValue(0.8).setToValue(1.0).play();
+
+// Slide
+new SlideTransition(Duration.millis(400), xProp)
+    .setFromValue(-100).setToValue(0).play();
+
+// Rotate
+new RotateTransition(Duration.seconds(1), angleProp)
+    .setFromValue(0).setToValue(360).play();
+
+// Compose — parallel or sequential
+new SequentialTransition(fadeIn, pause, slideOut).play();
+new ParallelTransition(fadeIn, scaleUp).play();
+```
+
+**Features:**
+- `Duration` — immutable time values (`ZERO`, `INDEFINITE`, `millis()`, `seconds()`, `minutes()`)
+- `Interpolator` — built-in easings: `LINEAR`, `EASE_IN`, `EASE_OUT`, `EASE_IN_OUT`, `DISCRETE`
+- Cycle control — repeat count, auto-reverse, rate scaling
+- Status tracking — `STOPPED`, `RUNNING`, `PAUSED` with observable status property
+- `FrameScheduler` — pluggable frame callback (maps to `requestAnimationFrame` on web)
+- `TestFrameScheduler` — deterministic time control for unit tests
+
+---
+
+### `jux-html` — HTML template loading *(optional)*
+
+Load external HTML files into JUX components. **Not required** — JUX works purely with the Java `Element` API. Add it when you prefer writing markup in HTML files with Java-powered wiring.
+
+```groovy
+implementation 'xss.it.jux:jux-html:1.0.0'
+```
+
+**Define a template:**
+
+```html
+<!-- src/main/resources/templates/pages/profile.html -->
+<section class="profile">
+  <h2 id="title">#{profile.title}</h2>
+  <div id="avatar"></div>
+  <div data-slot="content"></div>
+</section>
+```
+
+**Wire it to a component:**
+
+```java
+@Html("pages/profile.html")
+public class ProfileCard extends Component {
+
+    @HtmlId private Element title;    // injected by id="title"
+    @HtmlId private Element avatar;   // injected by id="avatar"
+    @Slot("content") private Element content;  // injected by data-slot="content"
+
+    @Override
+    public Element render() {
+        return HtmlLoader.load(this);  // parses, caches, injects, returns wired template
+    }
+}
+```
+
+**Features:**
+- `@Html(path)` — associates a component with an HTML template file
+- `@HtmlId` — injects elements by their HTML `id` attribute
+- `@Slot(name)` — injects named slots (`data-slot="..."`) for dynamic content
+- `HtmlParser` — full HTML5 parser (handles void elements, character entities, boolean attributes)
+- `TemplateCache` — LRU cache of parsed templates (parse once, clone per use)
+- `ExpressionResolver` — evaluates `#{...}` placeholders for i18n keys
+- `I18nResolver`, `FormatResolver`, `FormatDirective` — locale-aware formatting in templates
+- Error reporting with filename + line number
+
+---
+
 ### `jux-processor` — Compile-time validation
 
 Annotation processor that catches errors at compile time:
@@ -1079,6 +1268,67 @@ GET  /api/search?q=wireless     # Product search
 
 ---
 
+### `client-side-demo` — TeaVM Client-Side Interactivity
+
+A comprehensive demo showcasing JUX's client-side capabilities — all interactivity compiled from Java to JavaScript via TeaVM. No hand-written JS anywhere.
+
+```bash
+./gradlew :client-side-demo:bootRun
+# → http://localhost:9092
+```
+
+**Pages:**
+
+| Page | Route | Demonstrates |
+|---|---|---|
+| Home | `/` | Overview of all interactive demos |
+| Components | `/components` | Pure client-side widgets (no API) |
+| API Demo | `/api-demo` | Client-side widgets calling REST APIs |
+| HTML Demo | `/html-demo` | `@Html` template loading with `@HtmlId` and `@Slot` |
+| About | `/about` | Framework info |
+
+**Interactive components (Java → TeaVM → JS):**
+
+| Widget | What it does |
+|---|---|
+| `CounterWidget` | Increment/decrement/reset with reactive `@State` |
+| `TodoWidget` | Add/complete/delete todos, filtered views |
+| `LiveSearchWidget` | Debounced search with instant filtering |
+| `StopwatchWidget` | Start/stop/lap timer using `Window.setInterval` |
+| `TabsWidget` | Tab switching with keyboard navigation |
+| `AccordionWidget` | Expand/collapse sections |
+| `ModalWidget` | Dialog with focus trap, Escape to close |
+| `ThemeToggleWidget` | Light/dark theme switching |
+
+**API-connected components (real HTTP via TeaVM `XMLHttpRequest`):**
+
+| Widget | API Endpoint | What it does |
+|---|---|---|
+| `UserBrowserWidget` | `GET /api/users` | Fetches and displays user cards with filtering |
+| `QuoteMachineWidget` | `GET /api/quotes/random` | Fetches random quotes on demand |
+| `FormSubmitWidget` | `POST /api/contact` | Form submission with server-side validation errors |
+| `PollWidget` | `GET /api/stats` | Live polling every 5s with auto-refresh |
+
+**HTML template components (`@Html` + `@HtmlId` + `@Slot`):**
+
+| Component | Template | What it does |
+|---|---|---|
+| `ProfileCardHtml` | `profile-card.html` | Profile card loaded from HTML with slot injection |
+| `DashboardPanelHtml` | `dashboard-panel.html` | Dashboard panel with multiple `@HtmlId` elements |
+| `PricingTableHtml` | `pricing-table.html` | Pricing table parsed from HTML template |
+| `TimelineHtml` | `timeline.html` | Timeline component with `#{...}` i18n placeholders |
+
+**Stack:** Tailwind CSS · TeaVM 0.13.x · 4 REST API controllers · 21 components
+
+**Key patterns demonstrated:**
+- **Zero hand-written JS** — all DOM manipulation, event handling, HTTP requests, and timers compiled from Java via TeaVM
+- **Native TeaVM APIs** — `XMLHttpRequest`, `JSON.parse()`, `@JSProperty` overlay interfaces, `Window.setInterval/clearInterval`
+- **Handler registry** — one permanent `addEventListener` per element, handler references swapped on re-render
+- **Reactive properties** — `jux-reactive` properties driving client-side UI updates
+- **HTML template loading** — `jux-html` module parsing external HTML files into JUX `Element` trees
+
+---
+
 ## Configuration
 
 Full `application.yml` reference:
@@ -1138,6 +1388,27 @@ jux:
 
 ---
 
+## Module Overview
+
+| Module | Package | Required | Depends On |
+|---|---|---|---|
+| `jux-annotations` | `xss.it.jux.annotation` | yes | nothing |
+| `jux-core` | `xss.it.jux.core` | yes | jux-annotations |
+| `jux-a11y` | `xss.it.jux.a11y` | yes | jux-core |
+| `jux-i18n` | `xss.it.jux.i18n` | yes | jux-core |
+| `jux-processor` | `xss.it.jux.processor` | yes | jux-annotations, jux-core |
+| `jux-client` | `xss.it.jux.client` | yes | jux-core, jux-annotations, jux-a11y |
+| `jux-server` | `xss.it.jux.server` | yes | jux-core, jux-a11y, jux-i18n, jux-processor |
+| `jux-themes` | `xss.it.jux.theme` | no | jux-core, jux-a11y |
+| `jux-cms` | `xss.it.jux.cms` | no | jux-server, jux-a11y, jux-i18n |
+| `jux-reactive` | `xss.it.jux.reactive` | no | jux-core |
+| `jux-animations` | `xss.it.jux.animations` | no | jux-reactive |
+| `jux-html` | `xss.it.jux.html` | no | jux-core, jux-i18n, jux-reactive |
+
+> **Optional modules** (`jux-reactive`, `jux-animations`, `jux-html`, `jux-themes`, `jux-cms`) are not required for JUX to work. The framework is fully functional with just the core modules. Add optional modules only when you need their capabilities.
+
+---
+
 ## Tech Stack
 
 | Component | Version | Purpose |
@@ -1161,7 +1432,7 @@ No npm. No webpack. No vite. No node_modules. Just Gradle.
 # Build all modules
 ./gradlew build
 
-# Run tests (985 tests across 7 modules)
+# Run tests
 ./gradlew test
 
 # Publish to local Maven (for consumer projects)
@@ -1175,6 +1446,14 @@ No npm. No webpack. No vite. No node_modules. Just Gradle.
 ./gradlew :jux-a11y:test
 ./gradlew :jux-server:test
 ./gradlew :jux-themes:test
+./gradlew :jux-reactive:test
+./gradlew :jux-animations:test
+./gradlew :jux-html:test
+
+# Run demo apps
+./gradlew :jux-demo:bootRun           # → http://localhost:9090
+./gradlew :jux-store:bootRun          # → http://localhost:9091
+./gradlew :client-side-demo:bootRun   # → http://localhost:9092
 ```
 
 **Requirements:** Java 25+, Gradle 9.1+

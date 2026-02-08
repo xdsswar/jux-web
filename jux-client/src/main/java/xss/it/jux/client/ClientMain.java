@@ -13,10 +13,9 @@
 
 package xss.it.jux.client;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.teavm.jso.JSBody;
 import org.teavm.jso.browser.Window;
@@ -24,8 +23,6 @@ import org.teavm.jso.dom.html.HTMLDocument;
 import org.teavm.jso.dom.html.HTMLElement;
 import org.teavm.jso.dom.xml.NodeList;
 
-import xss.it.jux.annotation.OnMount;
-import xss.it.jux.annotation.OnUnmount;
 import xss.it.jux.core.Component;
 import xss.it.jux.core.Element;
 
@@ -79,19 +76,17 @@ public final class ClientMain {
 
     /**
      * Compile-time registry mapping fully-qualified class names to
-     * {@link Component} constructors.
+     * component factory functions.
      *
-     * <p>During the build, the JUX annotation processor (jux-processor)
-     * generates a registration block that populates this map with every
-     * class annotated with {@code @JuxComponent(clientSide = true)}.
-     * In the structural implementation, this map starts empty and is
-     * populated by {@link #registerComponent(String, Class)}.</p>
+     * <p>Each consumer application registers its client-side components
+     * as {@code Supplier<Component>} factories. This avoids reflection
+     * for instantiation, which TeaVM does not reliably support.</p>
      *
      * <p>The key is the fully-qualified class name (matching the
      * {@code data-jux-class} attribute emitted during SSR), and the
-     * value is the component's {@link Class} object.</p>
+     * value is a factory that creates new instances.</p>
      */
-    private static final Map<String, Class<? extends Component>> COMPONENT_REGISTRY =
+    private static final Map<String, Supplier<Component>> COMPONENT_REGISTRY =
             new HashMap<>();
 
     /**
@@ -137,7 +132,7 @@ public final class ClientMain {
      * </ol>
      *
      */
-    static void main() {
+    public static void main() {
         /*
          * Obtain the browser window and document through TeaVM's JSO bridge.
          * These are thin Java wrappers around the native browser objects.
@@ -182,28 +177,30 @@ public final class ClientMain {
     private static native String getDocumentReadyState();
 
     /**
-     * Register a component class in the compile-time registry.
+     * Register a component factory in the compile-time registry.
      *
-     * <p>Called by the generated registration code from the annotation
-     * processor, or manually for testing. Each client-side component
-     * must be registered here so that the hydration process can
-     * instantiate it when it encounters a matching {@code data-jux-class}
-     * attribute in the DOM.</p>
+     * <p>Called by each consumer application's TeaVM entry point.
+     * Each client-side component must be registered here so that the
+     * hydration process can instantiate it when it encounters a matching
+     * {@code data-jux-class} attribute in the DOM.</p>
      *
-     * @param className      the fully-qualified class name, must match the
-     *                        {@code data-jux-class} attribute value in the SSR HTML
-     * @param componentClass the component class to instantiate for hydration
+     * <p>Using a {@code Supplier} factory avoids reflection-based
+     * instantiation, which TeaVM does not reliably support.</p>
+     *
+     * @param className the fully-qualified class name, must match the
+     *                  {@code data-jux-class} attribute value in the SSR HTML
+     * @param factory   a supplier that creates new component instances
      * @throws NullPointerException if either argument is null
      */
     public static void registerComponent(String className,
-                                          Class<? extends Component> componentClass) {
+                                          Supplier<Component> factory) {
         if (className == null) {
             throw new NullPointerException("className must not be null");
         }
-        if (componentClass == null) {
-            throw new NullPointerException("componentClass must not be null");
+        if (factory == null) {
+            throw new NullPointerException("factory must not be null");
         }
-        COMPONENT_REGISTRY.put(className, componentClass);
+        COMPONENT_REGISTRY.put(className, factory);
     }
 
     /**
@@ -263,24 +260,23 @@ public final class ClientMain {
                 continue;
             }
 
-            /* Resolve the component class from the registry. */
-            Class<? extends Component> componentClass =
-                    COMPONENT_REGISTRY.get(juxClassName);
+            /* Resolve the component factory from the registry. */
+            Supplier<Component> factory = COMPONENT_REGISTRY.get(juxClassName);
 
-            if (componentClass == null) {
+            if (factory == null) {
                 /*
                  * The class was not registered. This can happen if the
-                 * annotation processor did not include it, or if the
-                 * component was added after the last client build.
+                 * consumer's TeaVM entry point did not include it, or if
+                 * the component was added after the last client build.
                  */
-                logWarning("No registered component class for '"
+                logWarning("No registered component factory for '"
                         + juxClassName + "'; skipping hydration of '"
                         + juxId + "'.");
                 continue;
             }
 
             /* Hydrate the individual component. */
-            hydrateComponent(juxId, componentClass, domElement);
+            hydrateComponent(juxId, juxClassName, factory, domElement);
         }
     }
 
@@ -288,24 +284,25 @@ public final class ClientMain {
      * Hydrate a single component: instantiate, render, bind events, wire
      * state, and invoke the {@link OnMount} lifecycle hook.
      *
-     * @param juxId          the unique component instance ID from {@code data-jux-id}
-     * @param componentClass the resolved {@link Component} subclass
-     * @param domElement     the existing server-rendered DOM element to hydrate
+     * @param juxId     the unique component instance ID from {@code data-jux-id}
+     * @param className the fully-qualified class name (for error messages)
+     * @param factory   the factory that creates new component instances
+     * @param domElement the existing server-rendered DOM element to hydrate
      */
     private static void hydrateComponent(String juxId,
-                                          Class<? extends Component> componentClass,
+                                          String className,
+                                          Supplier<Component> factory,
                                           HTMLElement domElement) {
         try {
             /*
-             * Instantiate the component using its no-arg constructor.
+             * Instantiate the component using the registered factory.
              *
              * NOTE: On the client side, Spring DI is not available. Components
              * that require @Autowired dependencies should have their client-side
              * behavior limited to UI interactions (event handling, state changes)
-             * and fetch data via HTTP APIs. The constructor-based approach is
-             * consistent with how TeaVM handles class instantiation.
+             * and fetch data via HTTP APIs.
              */
-            Component component = instantiateComponent(componentClass);
+            Component component = factory.get();
 
             /*
              * Produce the virtual Element tree by calling render().
@@ -319,8 +316,14 @@ public final class ClientMain {
              * attaching event handlers from the virtual tree to matching
              * real DOM elements. The DOM structure is NOT modified here;
              * it was already rendered correctly by the server.
+             *
+             * Set the active component on the bridge so that event handlers
+             * attached during hydration will automatically notify the
+             * StateManager after execution, enabling the reactive loop.
              */
+            DOM_BRIDGE.setActiveComponent(component);
             DOM_BRIDGE.hydrate(virtualTree, domElement);
+            DOM_BRIDGE.setActiveComponent(null);
 
             /*
              * Bind @On-annotated methods on the component class to their
@@ -338,11 +341,14 @@ public final class ClientMain {
             STATE_MANAGER.registerComponent(component, domElement, virtualTree);
 
             /*
-             * Invoke the @OnMount lifecycle method(s). This is where
+             * Invoke the onMount() lifecycle method. This is where
              * developers initialize third-party libraries, set up WebSocket
              * connections, access Canvas contexts, etc.
+             *
+             * Direct method call — no reflection needed. Components override
+             * onMount() in the Component base class.
              */
-            invokeLifecycleHook(component, OnMount.class);
+            component.onMount();
 
             /*
              * Record the component as active. This prevents double-hydration
@@ -359,80 +365,7 @@ public final class ClientMain {
              * entire page's interactivity.
              */
             logError("Failed to hydrate component '" + juxId + "' ("
-                    + componentClass.getName() + "): " + e.getMessage());
-        }
-    }
-
-    /**
-     * Instantiate a {@link Component} subclass via its no-arg constructor.
-     *
-     * <p>TeaVM supports basic reflection for constructor invocation. If
-     * the component does not have an accessible no-arg constructor, this
-     * method throws an exception.</p>
-     *
-     * @param componentClass the class to instantiate
-     * @return a new instance of the component
-     * @throws ReflectiveOperationException if instantiation fails
-     */
-    private static Component instantiateComponent(
-            Class<? extends Component> componentClass)
-            throws ReflectiveOperationException {
-        /*
-         * Use getDeclaredConstructor() to find the no-arg constructor,
-         * then setAccessible(true) in case it is package-private.
-         * TeaVM supports this basic level of reflection.
-         */
-        Constructor<? extends Component> constructor =
-                componentClass.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        return constructor.newInstance();
-    }
-
-    /**
-     * Invoke all methods on a component that are annotated with the given
-     * lifecycle annotation ({@link OnMount} or {@link OnUnmount}).
-     *
-     * <p>Methods annotated with lifecycle hooks must be:</p>
-     * <ul>
-     *   <li>Instance methods (not static)</li>
-     *   <li>No-arg (zero parameters)</li>
-     *   <li>Return void (return value is ignored if present)</li>
-     * </ul>
-     *
-     * <p>If multiple methods carry the same lifecycle annotation, they
-     * are all invoked in declaration order. Exceptions from one method
-     * do not prevent invocation of subsequent methods.</p>
-     *
-     * @param component       the component instance
-     * @param annotationClass the lifecycle annotation to look for
-     *                         ({@code OnMount.class} or {@code OnUnmount.class})
-     */
-    private static void invokeLifecycleHook(Object component,
-                                             Class<? extends java.lang.annotation.Annotation> annotationClass) {
-        /*
-         * Scan all declared methods (including private) on the component
-         * class for the specified annotation.
-         */
-        Method[] methods = component.getClass().getDeclaredMethods();
-
-        for (Method method : methods) {
-            if (method.isAnnotationPresent(annotationClass)) {
-                try {
-                    /* Make the method accessible even if private. */
-                    method.setAccessible(true);
-
-                    /*
-                     * Invoke with no arguments. Lifecycle hooks are always
-                     * no-arg methods per the framework contract.
-                     */
-                    method.invoke(component);
-                } catch (Exception e) {
-                    logError("Error invoking @"
-                            + annotationClass.getSimpleName()
-                            + " on " + component.getClass().getName()
-                            + "." + method.getName() + ": " + e.getMessage());
-                }
-            }
+                    + className + "): " + e.getClass().getName() + ": " + e.getMessage());
         }
     }
 
@@ -449,9 +382,9 @@ public final class ClientMain {
     public static void destroyComponent(String juxId) {
         Object component = ACTIVE_COMPONENTS.remove(juxId);
 
-        if (component != null) {
-            /* Invoke @OnUnmount hooks for cleanup. */
-            invokeLifecycleHook(component, OnUnmount.class);
+        if (component instanceof Component comp) {
+            /* Invoke the onUnmount() lifecycle method for cleanup. */
+            comp.onUnmount();
         }
     }
 

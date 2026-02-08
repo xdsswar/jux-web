@@ -1,0 +1,5 @@
+dependencies {
+    api project(':jux-core')
+    api project(':jux-i18n')
+    implementation project(':jux-reactive')
+}

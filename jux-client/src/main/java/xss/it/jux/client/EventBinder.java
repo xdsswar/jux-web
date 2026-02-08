@@ -13,7 +13,6 @@
 
 package xss.it.jux.client;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,7 +23,6 @@ import org.teavm.jso.dom.html.HTMLElement;
 import org.teavm.jso.dom.xml.Node;
 import org.teavm.jso.dom.xml.NodeList;
 
-import xss.it.jux.annotation.On;
 import xss.it.jux.core.DomEvent;
 import xss.it.jux.core.Element;
 import xss.it.jux.core.EventHandler;
@@ -205,104 +203,28 @@ public class EventBinder {
     // ====================================================================
 
     /**
-     * Discover and bind all {@link On @On}-annotated methods on a component
-     * to their target DOM elements.
+     * Placeholder for annotation-based event handler binding.
      *
-     * <p>This method performs reflective introspection on the component's
-     * class (including superclasses up to {@link xss.it.jux.core.Component})
-     * to find all methods annotated with {@code @On}. For each annotated
-     * method, it:</p>
-     * <ol>
-     *   <li>Reads the event name from {@link On#value()} (e.g. "click").</li>
-     *   <li>Reads the target CSS selector from {@link On#target()} (e.g.
-     *       "#search-input", ".btn"). An empty target means the component's
-     *       root element.</li>
-     *   <li>Resolves the target element(s) within the component's root DOM
-     *       element using {@code querySelectorAll} (for CSS selectors) or
-     *       the root element itself (for empty targets).</li>
-     *   <li>Attaches a DOM event listener that invokes the annotated method
-     *       via reflection when the event fires.</li>
-     * </ol>
+     * <p>This method is intentionally a no-op. The {@code @On} annotation-based
+     * event binding requires Java reflection ({@code getDeclaredMethods()},
+     * {@code getAnnotation()}, {@code method.invoke()}) which TeaVM's
+     * ahead-of-time compiler does not reliably support.</p>
      *
-     * <h3>Method Signatures</h3>
-     * <p>An {@code @On}-annotated method should follow one of these signatures:</p>
-     * <ul>
-     *   <li>{@code public void handleClick(DomEvent event)} &mdash; receives
-     *       the event data wrapper.</li>
-     *   <li>{@code public void handleClick()} &mdash; no-arg; the event data
-     *       is discarded.</li>
-     * </ul>
-     * <p>The method may be public, protected, package-private, or private.
-     * It is made accessible via {@link Method#setAccessible(boolean)}.</p>
+     * <p>All client-side event handling should use the inline {@code .on()}
+     * method on {@link Element} nodes in the component's {@code render()}
+     * method instead:</p>
+     * <pre>{@code
+     * button().text("Click me").on("click", e -> count++)
+     * }</pre>
      *
-     * <h3>Auto State Notification</h3>
-     * <p>After each annotated handler invocation, the binder automatically
-     * calls {@link StateManager#notifyStateChange(Object)} to trigger a
-     * re-render if any {@code @State} fields were modified within the handler.</p>
-     *
-     * @param component the component instance containing {@code @On} methods
-     * @param root      the component's root DOM element (the scope for
-     *                   CSS selector resolution)
-     * @throws NullPointerException if either argument is null
+     * @param component the component instance (unused)
+     * @param root      the component's root DOM element (unused)
      */
     public void bindAnnotatedHandlers(Object component, HTMLElement root) {
-        Objects.requireNonNull(component, "Component must not be null");
-        Objects.requireNonNull(root, "Root DOM element must not be null");
-
         /*
-         * Scan the component class hierarchy for @On-annotated methods.
-         * We walk from the concrete class up to (but not including) the
-         * Component base class.
+         * No-op: @On annotation binding via reflection is not supported
+         * under TeaVM. Use .on("event", handler) in render() instead.
          */
-        Class<?> clazz = component.getClass();
-
-        while (clazz != null && clazz != xss.it.jux.core.Component.class
-                && clazz != Object.class) {
-
-            Method[] methods = clazz.getDeclaredMethods();
-
-            for (Method method : methods) {
-                On onAnnotation = method.getAnnotation(On.class);
-
-                if (onAnnotation == null) {
-                    /* Not an @On method; skip. */
-                    continue;
-                }
-
-                /* Extract the event name and target selector. */
-                String eventName = onAnnotation.value();
-                String targetSelector = onAnnotation.target();
-
-                /* Make the method accessible (it may be private). */
-                method.setAccessible(true);
-
-                /*
-                 * Determine which DOM elements should receive the listener.
-                 *
-                 * Empty target = bind to the root element (events bubble up).
-                 * Non-empty target = CSS selector resolved against root.
-                 */
-                if (targetSelector == null || targetSelector.isEmpty()) {
-                    /*
-                     * Bind to the root element. Any matching event that
-                     * bubbles up from a descendant will trigger the handler.
-                     */
-                    root.addEventListener(eventName,
-                            createAnnotatedListener(component, method));
-                } else {
-                    /*
-                     * Resolve the CSS selector against the component's root
-                     * element. This limits the selector scope to within
-                     * this component (not the entire document).
-                     */
-                    bindToSelectorTargets(component, method, eventName,
-                            targetSelector, root);
-                }
-            }
-
-            /* Move up to the superclass. */
-            clazz = clazz.getSuperclass();
-        }
     }
 
     // ====================================================================
@@ -350,144 +272,6 @@ public class EventBinder {
                 ClientMain.getStateManager().notifyStateChange(component);
             }
         };
-    }
-
-    // ====================================================================
-    //  Private: listener creation for @On annotated methods
-    // ====================================================================
-
-    /**
-     * Create a TeaVM {@link EventListener} that invokes an
-     * {@code @On}-annotated method on a component via reflection.
-     *
-     * <p>The listener handles two method signatures:</p>
-     * <ul>
-     *   <li><b>One-arg ({@link DomEvent}):</b> the event data is passed
-     *       to the method.</li>
-     *   <li><b>No-arg:</b> the method is invoked without arguments; the
-     *       event data is discarded.</li>
-     * </ul>
-     *
-     * <p>After the method returns, the state manager is notified to check
-     * for {@code @State} field changes and trigger a re-render if needed.</p>
-     *
-     * @param component the component instance to invoke the method on
-     * @param method    the {@code @On}-annotated method
-     * @return a TeaVM EventListener that reflectively invokes the method
-     */
-    private EventListener<Event> createAnnotatedListener(Object component,
-                                                           Method method) {
-        /*
-         * Determine the method's parameter count at binding time
-         * (not at invocation time) for efficiency.
-         */
-        int paramCount = method.getParameterCount();
-
-        return (Event nativeEvent) -> {
-            try {
-                if (paramCount == 1) {
-                    /*
-                     * The method accepts a DomEvent parameter.
-                     * Build the event wrapper and pass it.
-                     */
-                    DomEvent domEvent = buildDomEvent(nativeEvent);
-                    method.invoke(component, domEvent);
-
-                    /* Honor preventDefault / stopPropagation. */
-                    if (domEvent.isDefaultPrevented()) {
-                        nativeEvent.preventDefault();
-                    }
-                    if (domEvent.isPropagationStopped()) {
-                        nativeEvent.stopPropagation();
-                    }
-                } else {
-                    /*
-                     * No-arg method. Just invoke it without arguments.
-                     * The developer doesn't need event details.
-                     */
-                    method.invoke(component);
-                }
-            } catch (Exception e) {
-                System.err.println("[JUX ERROR] @On handler '"
-                        + method.getName() + "' on "
-                        + component.getClass().getName()
-                        + " threw: " + e.getMessage());
-            }
-
-            /*
-             * After every annotated handler invocation, notify the state
-             * manager. If the handler modified any @State fields, this
-             * will trigger a re-render and DOM patch.
-             */
-            ClientMain.getStateManager().notifyStateChange(component);
-        };
-    }
-
-    // ====================================================================
-    //  Private: CSS selector target resolution
-    // ====================================================================
-
-    /**
-     * Resolve a CSS selector against a root element and bind an event
-     * listener to every matching element.
-     *
-     * <p>Uses {@code querySelectorAll} on the root element to find all
-     * elements matching the selector within the component's DOM subtree.
-     * The listener is attached to each matching element individually.</p>
-     *
-     * <p>If no elements match the selector, a warning is logged. This
-     * commonly indicates a typo in the selector or a mismatch between
-     * the {@code @On(target = "...")} annotation and the rendered HTML.</p>
-     *
-     * @param component      the component instance
-     * @param method         the {@code @On}-annotated method to invoke
-     * @param eventName      the DOM event name (e.g. "click", "input")
-     * @param targetSelector the CSS selector string (e.g. "#search", ".btn")
-     * @param root           the component's root DOM element (selector scope)
-     */
-    private void bindToSelectorTargets(Object component, Method method,
-                                        String eventName, String targetSelector,
-                                        HTMLElement root) {
-        /*
-         * querySelectorAll returns all elements within root that match
-         * the CSS selector. The search is scoped to the component's
-         * subtree, not the entire document.
-         */
-        NodeList<? extends Node> matches = root.querySelectorAll(targetSelector);
-        int matchCount = matches.getLength();
-
-        if (matchCount == 0) {
-            /*
-             * No elements matched the selector. This is likely a
-             * developer error (typo in selector, or the element hasn't
-             * been rendered yet). Log a warning.
-             */
-            System.err.println("[JUX WARN] @On(value=\"" + eventName
-                    + "\", target=\"" + targetSelector + "\") on "
-                    + component.getClass().getName() + "."
-                    + method.getName() + " matched 0 elements.");
-            return;
-        }
-
-        /*
-         * Create one listener instance and attach it to all matching
-         * elements. The listener is the same for all targets since
-         * it invokes the same method on the same component.
-         */
-        EventListener<Event> listener = createAnnotatedListener(component, method);
-
-        for (int i = 0; i < matchCount; i++) {
-            Node node = matches.item(i);
-
-            /*
-             * querySelectorAll only returns Element nodes, so this cast
-             * is safe. Attach the listener.
-             */
-            if (node.getNodeType() == Node.ELEMENT_NODE) {
-                HTMLElement targetElement = (HTMLElement) node;
-                targetElement.addEventListener(eventName, listener);
-            }
-        }
     }
 
     // ====================================================================

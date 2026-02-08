@@ -35,3 +35,10 @@
 /gradle/
 /CLAUDE.md
 *.gitkeep
+/jux-feature-plan.md
+/main/
+/ref/
+node_modules/
+package.json
+package-lock.json
+*build

@@ -13,10 +13,12 @@
 
 package xss.it.jux.client;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.teavm.jso.JSBody;
 import org.teavm.jso.browser.Window;
 import org.teavm.jso.dom.events.Event;
 import org.teavm.jso.dom.events.EventListener;
@@ -77,6 +79,48 @@ public class JuxDomBridge {
     private final HTMLDocument document;
 
     /**
+     * The component currently being hydrated. Set before hydration begins
+     * and cleared afterwards. Used to notify the {@link StateManager} after
+     * event handlers fire so that {@code @State} field changes trigger
+     * automatic re-renders.
+     */
+    private Object activeComponent;
+
+    /**
+     * Counter for generating unique element IDs for the handler registry.
+     * Each DOM element that receives JUX event handlers gets a unique
+     * {@code data-jux-eid} attribute used as a key into the registry.
+     */
+    private static int nextElementId = 0;
+
+    /**
+     * Registry mapping element IDs to their current event handler set.
+     * This enables handler-reference swapping on re-render without
+     * stacking duplicate {@code addEventListener} calls.
+     *
+     * <p>Each entry tracks the owning component (for state notification)
+     * and a mutable map of event name to current handler. Permanent
+     * listeners registered via {@code addEventListener} look up the
+     * current handler from this registry on each invocation.</p>
+     */
+    private static final Map<String, ElementHandlerEntry> HANDLER_REGISTRY = new HashMap<>();
+
+    /**
+     * Tracks the current event handlers and owning component for a single
+     * DOM element in the handler registry.
+     */
+    private static class ElementHandlerEntry {
+        /** The component instance that owns this element (for state notification). */
+        final Object component;
+        /** Current handlers keyed by event name. Updated on each re-render. */
+        final Map<String, EventHandler> handlers = new HashMap<>();
+
+        ElementHandlerEntry(Object component) {
+            this.component = component;
+        }
+    }
+
+    /**
      * Construct a new DOM bridge using the current browser window's document.
      *
      * <p>This constructor is called once during {@link ClientMain} initialization.
@@ -85,6 +129,19 @@ public class JuxDomBridge {
      */
     public JuxDomBridge() {
         this.document = Window.current().getDocument();
+    }
+
+    /**
+     * Set the component currently being hydrated.
+     *
+     * <p>When set, event handlers attached during hydration will automatically
+     * call {@link StateManager#notifyStateChange(Object)} after executing,
+     * enabling the reactive re-render loop for {@code @State} fields.</p>
+     *
+     * @param component the component instance, or null to clear
+     */
+    public void setActiveComponent(Object component) {
+        this.activeComponent = component;
     }
 
     // ====================================================================
@@ -144,19 +201,13 @@ public class JuxDomBridge {
         }
 
         /*
-         * Step 4: Bind event handlers.
+         * Step 4: Bind event handlers via the handler registry.
          *
-         * Each EventHandler from the virtual Element is wrapped in a
-         * TeaVM EventListener that converts the native browser Event
-         * into a JUX DomEvent before dispatching.
+         * Each EventHandler is registered in the global handler registry
+         * and a permanent EventListener is attached that delegates through
+         * the registry. This prevents handler accumulation on re-renders.
          */
-        Map<String, EventHandler> handlers = el.getEventHandlers();
-        for (Map.Entry<String, EventHandler> entry : handlers.entrySet()) {
-            String eventName = entry.getKey();
-            EventHandler handler = entry.getValue();
-
-            node.addEventListener(eventName, wrapHandler(handler));
-        }
+        bindHandlers(node, el.getEventHandlers());
 
         /*
          * Step 5: Recursively create and append child elements.
@@ -215,17 +266,11 @@ public class JuxDomBridge {
         Objects.requireNonNull(existing, "Existing DOM element must not be null");
 
         /*
-         * Attach event handlers from the virtual tree to the real DOM node.
-         * This is the primary purpose of hydration: making the server-rendered
-         * HTML interactive without modifying its structure.
+         * Attach event handlers from the virtual tree to the real DOM node
+         * via the handler registry. This is the primary purpose of hydration:
+         * making the server-rendered HTML interactive.
          */
-        Map<String, EventHandler> handlers = el.getEventHandlers();
-        for (Map.Entry<String, EventHandler> entry : handlers.entrySet()) {
-            String eventName = entry.getKey();
-            EventHandler handler = entry.getValue();
-
-            existing.addEventListener(eventName, wrapHandler(handler));
-        }
+        bindHandlers(existing, el.getEventHandlers());
 
         /*
          * Recursively hydrate children.
@@ -461,55 +506,22 @@ public class JuxDomBridge {
     // ====================================================================
 
     /**
-     * Re-bind event handlers after a re-render.
+     * Update event handler references after a re-render.
      *
-     * <p><b>Simplified approach:</b> In this structural implementation,
-     * we clone the DOM node to strip all existing event listeners, then
-     * reattach the new handlers. A production implementation would track
-     * listeners by name and only add/remove the ones that changed.</p>
-     *
-     * <p>The clone-and-replace technique works because
-     * {@link Node#cloneNode(boolean)} with {@code deep=false} creates a
-     * copy of the element without its event listeners. We then move all
-     * child nodes from the original to the clone, attach new listeners
-     * to the clone, and replace the original in the DOM.</p>
-     *
-     * <p><b>Note:</b> For the structural implementation, we take a simpler
-     * approach: just add the new handlers. Duplicate listeners for the same
-     * event name are tolerable in a structural impl since the behavior is
-     * correct (the new handler will fire alongside any old one). A
-     * production implementation would use {@code removeEventListener} with
-     * stored references.</p>
+     * <p>Uses the handler registry to swap handler references without
+     * adding duplicate {@code addEventListener} calls. The permanent
+     * listeners (registered during initial hydration or element creation)
+     * look up the current handler from the registry on each invocation,
+     * so updating the registry entry is sufficient.</p>
      *
      * @param node    the real DOM element
-     * @param oldTree the previous virtual tree (handlers to conceptually remove)
-     * @param newTree the new virtual tree (handlers to attach)
+     * @param oldTree the previous virtual tree (unused, kept for API symmetry)
+     * @param newTree the new virtual tree (handlers to register)
      */
     private void patchEventHandlers(HTMLElement node,
                                      Element oldTree,
                                      Element newTree) {
-        /*
-         * Structural simplification: attach all new event handlers.
-         *
-         * In a full implementation, we would:
-         * 1. Track listener references in a WeakMap-style structure.
-         * 2. Remove old listeners that are no longer in the new tree.
-         * 3. Add new listeners that were not in the old tree.
-         * 4. Replace listeners whose callbacks changed.
-         *
-         * For the structural impl, we re-attach new handlers. This means
-         * the component should be idempotent with respect to handler
-         * invocation (which it naturally is since render() produces the
-         * same handlers for the same state).
-         */
-        Map<String, EventHandler> newHandlers = newTree.getEventHandlers();
-
-        for (Map.Entry<String, EventHandler> entry : newHandlers.entrySet()) {
-            String eventName = entry.getKey();
-            EventHandler handler = entry.getValue();
-
-            node.addEventListener(eventName, wrapHandler(handler));
-        }
+        bindHandlers(node, newTree.getEventHandlers());
     }
 
     // ====================================================================
@@ -614,82 +626,187 @@ public class JuxDomBridge {
     // ====================================================================
 
     /**
-     * Wrap a JUX {@link EventHandler} in a TeaVM {@link EventListener} that
-     * bridges between the native browser {@link Event} and JUX's
-     * {@link DomEvent} wrapper.
+     * Bind (or update) event handlers for a DOM element using the handler
+     * registry, preventing duplicate {@code addEventListener} calls.
      *
-     * <p>The wrapper extracts commonly-needed properties from the native
-     * event (type, target ID, input value, keyboard key, modifier keys,
-     * mouse coordinates) and packages them into a {@link DomEvent} instance.
-     * This insulates component code from the raw browser event API and
-     * provides a consistent cross-platform interface.</p>
+     * <p><b>First call</b> (element has no {@code data-jux-eid}):</p>
+     * <ol>
+     *   <li>Assigns a unique {@code data-jux-eid} attribute to the element.</li>
+     *   <li>Creates an {@link ElementHandlerEntry} in the registry.</li>
+     *   <li>For each event type, registers ONE permanent {@code addEventListener}
+     *       that delegates through the registry.</li>
+     * </ol>
      *
-     * <p>After the handler executes, if {@link DomEvent#isDefaultPrevented()}
-     * returns {@code true}, the native event's {@code preventDefault()} is
-     * called. Similarly for {@link DomEvent#isPropagationStopped()} and
-     * {@code stopPropagation()}.</p>
+     * <p><b>Subsequent calls</b> (element already has {@code data-jux-eid}):</p>
+     * <ol>
+     *   <li>Looks up the existing registry entry.</li>
+     *   <li>Updates handler references for known event types (no new listeners).</li>
+     *   <li>Registers new permanent listeners only for event types that were
+     *       not previously bound.</li>
+     * </ol>
      *
-     * @param handler the JUX event handler to wrap
-     * @return a TeaVM EventListener that delegates to the handler
+     * @param node     the real DOM element to bind handlers on
+     * @param handlers the event handlers from the virtual Element tree
      */
-    private EventListener<Event> wrapHandler(EventHandler handler) {
-        return (Event nativeEvent) -> {
+    private void bindHandlers(HTMLElement node, Map<String, EventHandler> handlers) {
+        if (handlers.isEmpty()) {
+            return;
+        }
+
+        String eid = node.getAttribute("data-jux-eid");
+
+        if (eid == null || eid.isEmpty()) {
             /*
-             * Extract event properties from the native browser event.
-             *
-             * We use safe defaults for properties that may not exist on
-             * all event types (e.g. "key" is only on KeyboardEvent,
-             * "clientX" is only on MouseEvent). TeaVM's JSO will return
-             * null or 0 for missing properties.
+             * First time binding this element. Assign a unique ID,
+             * create a registry entry, and register permanent listeners.
              */
-            String type = nativeEvent.getType();
+            eid = "jux-" + (nextElementId++);
+            node.setAttribute("data-jux-eid", eid);
 
-            /* Get the target element for ID and value extraction. */
-            HTMLElement target = extractTarget(nativeEvent);
-            String targetId = (target != null) ? safeGetAttribute(target, "id") : "";
-            String value = (target != null) ? safeGetValue(target) : "";
+            Object component = this.activeComponent;
+            ElementHandlerEntry entry = new ElementHandlerEntry(component);
+            HANDLER_REGISTRY.put(eid, entry);
 
+            for (Map.Entry<String, EventHandler> he : handlers.entrySet()) {
+                String eventName = he.getKey();
+                entry.handlers.put(eventName, he.getValue());
+                registerPermanentListener(node, eid, eventName, component);
+            }
+        } else {
             /*
-             * Keyboard properties. We extract these via the native event's
-             * string representation since TeaVM's base Event type does not
-             * directly expose KeyboardEvent properties. For the structural
-             * implementation, we default to empty values.
-             *
-             * A production implementation would cast to the appropriate
-             * TeaVM JSO event subtype (KeyboardEvent, MouseEvent, etc.).
+             * Element already has handlers registered. Just update the
+             * handler references in the registry. The permanent listeners
+             * will pick up the new handlers on next invocation.
              */
-            String key = "";
-            boolean shiftKey = false;
-            boolean ctrlKey = false;
-            boolean altKey = false;
-            boolean metaKey = false;
-            double clientX = 0;
-            double clientY = 0;
+            ElementHandlerEntry entry = HANDLER_REGISTRY.get(eid);
 
-            /* Construct the JUX DomEvent wrapper. */
-            DomEvent domEvent = new DomEvent(
-                    type, targetId, value, key,
-                    shiftKey, ctrlKey, altKey, metaKey,
-                    clientX, clientY
-            );
+            if (entry == null) {
+                /* Defensive: registry entry missing (shouldn't happen). */
+                Object component = this.activeComponent;
+                entry = new ElementHandlerEntry(component);
+                HANDLER_REGISTRY.put(eid, entry);
+            }
 
-            /* Dispatch to the JUX handler. */
+            for (Map.Entry<String, EventHandler> he : handlers.entrySet()) {
+                String eventName = he.getKey();
+
+                if (!entry.handlers.containsKey(eventName)) {
+                    /* New event type not seen before — register a new permanent listener. */
+                    registerPermanentListener(node, eid, eventName, entry.component);
+                }
+
+                /* Update (or add) the handler reference. */
+                entry.handlers.put(eventName, he.getValue());
+            }
+        }
+    }
+
+    /**
+     * Register a single permanent {@code addEventListener} on a DOM element
+     * that delegates to the handler registry on each invocation.
+     *
+     * <p>This listener is registered ONCE and never removed. On each event,
+     * it looks up the <em>current</em> handler from the registry (which may
+     * have been updated by a re-render) and dispatches to it.</p>
+     *
+     * @param node      the DOM element to listen on
+     * @param eid       the element's unique registry key ({@code data-jux-eid})
+     * @param eventName the DOM event name (e.g. "click", "input")
+     * @param component the owning component for state change notification
+     */
+    private void registerPermanentListener(HTMLElement node, String eid,
+                                            String eventName, Object component) {
+        node.addEventListener(eventName, (Event nativeEvent) -> {
+            ElementHandlerEntry entry = HANDLER_REGISTRY.get(eid);
+            if (entry == null) {
+                return;
+            }
+            EventHandler handler = entry.handlers.get(eventName);
+            if (handler == null) {
+                return;
+            }
+
+            /* Build the JUX DomEvent from the native browser event. */
+            DomEvent domEvent = buildDomEvent(nativeEvent);
+
+            /* Dispatch to the current handler. */
             handler.handle(domEvent);
 
-            /*
-             * Honor preventDefault / stopPropagation requests from the
-             * handler. This allows component code to control native
-             * browser behavior (e.g. prevent form submission, stop
-             * event bubbling).
-             */
+            /* Honor preventDefault / stopPropagation from the handler. */
             if (domEvent.isDefaultPrevented()) {
                 nativeEvent.preventDefault();
             }
             if (domEvent.isPropagationStopped()) {
                 nativeEvent.stopPropagation();
             }
-        };
+
+            /* Notify the state manager to trigger re-render if needed. */
+            if (component != null) {
+                ClientMain.getStateManager().notifyStateChange(component);
+            }
+        });
     }
+
+    /**
+     * Build a JUX {@link DomEvent} from a native browser {@link Event}.
+     *
+     * <p>Extracts commonly-needed properties using {@code @JSBody} inlined
+     * JavaScript for reliable access to live DOM properties. This bypasses
+     * TeaVM JSO interface casting issues and reads the actual JavaScript
+     * property values directly.</p>
+     *
+     * @param nativeEvent the native browser event from TeaVM JSO
+     * @return a JUX DomEvent wrapper
+     */
+    private DomEvent buildDomEvent(Event nativeEvent) {
+        String type = nativeEvent.getType();
+
+        HTMLElement target = extractTarget(nativeEvent);
+        String targetId = (target != null) ? safeGetAttribute(target, "id") : "";
+        String value = (target != null) ? safeGetValue(target) : "";
+
+        String key = getEventKey(nativeEvent);
+        boolean shiftKey = getEventShiftKey(nativeEvent);
+        boolean ctrlKey = getEventCtrlKey(nativeEvent);
+        boolean altKey = getEventAltKey(nativeEvent);
+        boolean metaKey = getEventMetaKey(nativeEvent);
+        double clientX = getEventClientX(nativeEvent);
+        double clientY = getEventClientY(nativeEvent);
+
+        return new DomEvent(
+                type, targetId, value, key,
+                shiftKey, ctrlKey, altKey, metaKey,
+                clientX, clientY
+        );
+    }
+
+    // ====================================================================
+    //  @JSBody helpers: reliable JS property access via inlined JavaScript
+    // ====================================================================
+
+    @JSBody(params = {"event"}, script = "return event.key || '';")
+    private static native String getEventKey(Event event);
+
+    @JSBody(params = {"event"}, script = "return !!event.shiftKey;")
+    private static native boolean getEventShiftKey(Event event);
+
+    @JSBody(params = {"event"}, script = "return !!event.ctrlKey;")
+    private static native boolean getEventCtrlKey(Event event);
+
+    @JSBody(params = {"event"}, script = "return !!event.altKey;")
+    private static native boolean getEventAltKey(Event event);
+
+    @JSBody(params = {"event"}, script = "return !!event.metaKey;")
+    private static native boolean getEventMetaKey(Event event);
+
+    @JSBody(params = {"event"}, script = "return event.clientX || 0;")
+    private static native double getEventClientX(Event event);
+
+    @JSBody(params = {"event"}, script = "return event.clientY || 0;")
+    private static native double getEventClientY(Event event);
+
+    @JSBody(params = {"element"}, script = "return element.value || '';")
+    private static native String getInputValue(HTMLElement element);
 
     // ====================================================================
     //  Private helpers: DOM traversal utilities
@@ -764,15 +881,11 @@ public class JuxDomBridge {
         if ("input".equals(tagName) || "textarea".equals(tagName)
                 || "select".equals(tagName)) {
             /*
-             * Access the value attribute. In a full implementation, we
-             * would cast to HTMLInputElement/HTMLTextAreaElement for
-             * type-safe getValue(). For the structural impl, we use
-             * getAttribute which reads the DOM attribute (not the
-             * live property). A production implementation would use
-             * the JSO-typed accessors.
+             * Read the live DOM value property via @JSBody-inlined JS.
+             * This returns the user-typed/selected value, not the static
+             * HTML attribute which only reflects the initial value.
              */
-            String val = element.getAttribute("value");
-            return (val != null) ? val : "";
+            return getInputValue(element);
         }
 
         /* For non-form elements, return text content. */
