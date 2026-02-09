@@ -5,15 +5,28 @@ plugins {
     id 'org.teavm' version '0.13.0' apply false
 }
 
+/* ── Load publish credentials from local file (not committed to git) ── */
+def publishProps = new Properties()
+def publishFile = rootProject.file('publish.properties')
+if (publishFile.exists()) {
+    publishFile.withInputStream { publishProps.load(it) }
+}
+
 allprojects {
-    group = 'xss.it.jux'
-    version = '0.0.1-SNAPSHOT'
+    group = 'io.github.xdsswar'
+    version = '1.0.0'
     repositories { mavenCentral() }
 }
 
+/* Modules published to Maven Central (excludes demo apps). */
+def publishedModules = [
+    'jux-annotations', 'jux-core', 'jux-reactive', 'jux-html',
+    'jux-animations', 'jux-a11y', 'jux-i18n', 'jux-processor',
+    'jux-client', 'jux-server', 'jux-themes', 'jux-cms'
+] as Set
+
 subprojects {
     apply plugin: 'java-library'
-    apply plugin: 'maven-publish'
 
     java {
         toolchain { languageVersion = JavaLanguageVersion.of(25) }
@@ -36,11 +49,68 @@ subprojects {
         jvmArgs '-XX:+EnableDynamicAgentLoading', '-Xshare:off'
     }
 
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
+    /* ── Maven Central publishing (framework modules only) ── */
+    if (publishedModules.contains(project.name)) {
+        apply plugin: 'maven-publish'
+        apply plugin: 'signing'
+
+        java {
+            withJavadocJar()
+            withSourcesJar()
+        }
+
+        publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    from components.java
+
+                    pom {
+                        name = project.name
+                        description = 'JUX — Pure Java web framework with SSR, WCAG 2.2 AA, i18n, and CMS'
+                        url = 'https://juxweb.com'
+
+                        licenses {
+                            license {
+                                name = 'Xtreme Software Solutions Source License v1.0'
+                                url = 'https://juxweb.com/license'
+                            }
+                        }
+
+                        developers {
+                            developer {
+                                id = 'xdsswar'
+                                name = 'XDSSWAR'
+                                url = 'https://github.com/xdsswar'
+                            }
+                        }
+
+                        scm {
+                            connection = 'scm:git:git://github.com/xdsswar/jux-web.git'
+                            developerConnection = 'scm:git:ssh://github.com/xdsswar/jux-web.git'
+                            url = 'https://github.com/xdsswar/jux-web'
+                        }
+                    }
+                }
             }
+        }
+
+        signing {
+            def signingKeyId = publishProps['signing.keyId'] ?: findProperty('signing.keyId')
+            def signingPassword = publishProps['signing.password'] ?: findProperty('signing.password')
+            def keyFilePath = publishProps['signing.keyFile'] ?: findProperty('signing.keyFile')
+            def keyFile = keyFilePath ? rootProject.file(keyFilePath) : null
+            def canSign = signingKeyId && signingPassword && keyFile?.exists()
+
+            if (canSign) {
+                useInMemoryPgpKeys(signingKeyId, keyFile.text, signingPassword)
+                sign publishing.publications.mavenJava
+            }
+
+            required { canSign && !version.toString().endsWith('-SNAPSHOT') }
+        }
+
+        javadoc {
+            options.addStringOption('Xdoclint:none', '-quiet')
         }
     }
 }

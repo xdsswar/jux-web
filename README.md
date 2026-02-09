@@ -92,6 +92,8 @@ That's a complete page. Spring Boot auto-configuration picks up `@Route`, regist
 
 ### 1. Add JUX to your Spring Boot project
 
+**Gradle (Groovy DSL):**
+
 ```groovy
 // build.gradle
 plugins {
@@ -101,13 +103,51 @@ plugins {
 }
 
 dependencies {
-    implementation 'xss.it.jux:jux-server:1.0.0'
-    implementation 'xss.it.jux:jux-themes:1.0.0'      // optional: theme components
-    implementation 'xss.it.jux:jux-cms:1.0.0'          // optional: CMS module
-    implementation 'xss.it.jux:jux-reactive:1.0.0'     // optional: reactive properties & collections
-    implementation 'xss.it.jux:jux-animations:1.0.0'   // optional: keyframe animations & transitions
-    implementation 'xss.it.jux:jux-html:1.0.0'         // optional: HTML template loading
+    implementation 'io.github.xdsswar:jux-server:1.0.0'
+    implementation 'io.github.xdsswar:jux-themes:1.0.0'      // optional: theme components
+    implementation 'io.github.xdsswar:jux-cms:1.0.0'          // optional: CMS module
+    implementation 'io.github.xdsswar:jux-reactive:1.0.0'     // optional: reactive properties & collections
+    implementation 'io.github.xdsswar:jux-animations:1.0.0'   // optional: keyframe animations & transitions
+    implementation 'io.github.xdsswar:jux-html:1.0.0'         // optional: HTML template loading
 }
+```
+
+**Maven:**
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-server</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-themes</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <!-- Optional modules -->
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-cms</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-reactive</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-animations</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.github.xdsswar</groupId>
+        <artifactId>jux-html</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+</dependencies>
 ```
 
 ### 2. Create your application
@@ -823,7 +863,15 @@ public class MyWidgets {
 A reactive data layer for JUX. **Not required** — JUX works without it. Add it when you need observable state, data binding, or computed values.
 
 ```groovy
-implementation 'xss.it.jux:jux-reactive:1.0.0'
+implementation 'io.github.xdsswar:jux-reactive:1.0.0'
+```
+
+```xml
+<dependency>
+    <groupId>io.github.xdsswar</groupId>
+    <artifactId>jux-reactive</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 **Properties** — type-safe, change-tracking wrappers:
@@ -889,7 +937,15 @@ Timeline-based animation engine for JUX. **Not required** — add it when you ne
 Depends on `jux-reactive` (animates reactive properties).
 
 ```groovy
-implementation 'xss.it.jux:jux-animations:1.0.0'
+implementation 'io.github.xdsswar:jux-animations:1.0.0'
+```
+
+```xml
+<dependency>
+    <groupId>io.github.xdsswar</groupId>
+    <artifactId>jux-animations</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 **Timeline** — keyframe-based animation:
@@ -946,7 +1002,15 @@ new ParallelTransition(fadeIn, scaleUp).play();
 Load external HTML files into JUX components. **Not required** — JUX works purely with the Java `Element` API. Add it when you prefer writing markup in HTML files with Java-powered wiring.
 
 ```groovy
-implementation 'xss.it.jux:jux-html:1.0.0'
+implementation 'io.github.xdsswar:jux-html:1.0.0'
+```
+
+```xml
+<dependency>
+    <groupId>io.github.xdsswar</groupId>
+    <artifactId>jux-html</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 **Define a template:**

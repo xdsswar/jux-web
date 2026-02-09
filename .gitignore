@@ -31,6 +31,8 @@
 /jux-themes/build/classes/java/main/
 /jux-themes/build/classes/java/test/
 /.claude/
+publish.properties
+signing-key.asc
 /.idea/
 /gradle/
 /CLAUDE.md
